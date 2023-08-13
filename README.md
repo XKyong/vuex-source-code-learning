@@ -5,6 +5,29 @@
 
 该版本是Vuex 3.x版本，适配Vue2项目开发。
 
+调试注意事项：
+
+首先，在 `examples/webpack.config.js` 文件中增加 `sourcemap: true` 的配置项：
+
+```js
+module.exports = {
+	// 省略其他配置项
+  // 开启sourcemap才好调试
+  devtool: 'sourcemap',
+}
+```
+
+然后，通过如下命令安装依赖并启动服务：
+
+```bash
+$ yarn install
+$ yarn dev
+```
+
+最后，浏览器打开 http://localhost:8080/，然后以 `shopping-cart `为例子，打开控制面板 `source`， 在左侧找到 `webapck://` 下的文件夹（主要是 `src` 和 `examples`），设置断点，过完基本vuex核心的源码操作过程。
+
+调试过程中，做好代码注释工作。
+
 ---
 
 🔥 **HEADS UP!** You're currently looking at Vuex 3 branch. If you're looking for Vuex 4, [please check out `main` branch](https://github.com/vuejs/vuex/tree/main).

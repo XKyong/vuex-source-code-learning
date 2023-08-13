@@ -7,6 +7,7 @@ let Vue // bind on install
 
 export class Store {
   constructor (options = {}) {
+    // 如果是 cdn script 方式引入vuex插件，则自动安装vuex插件，不需要用Vue.use(Vuex)来安装
     // Auto install if it is not done yet and `window` has `Vue`.
     // To allow users to avoid auto-installation in some cases,
     // this code should be placed here. See #731
@@ -15,6 +16,7 @@ export class Store {
     }
 
     if (__DEV__) {
+      // 这里不用 console.assert，因为 console.assert 函数报错不会阻止后续代码执行！
       assert(Vue, `must call Vue.use(Vuex) before creating a store instance.`)
       assert(typeof Promise !== 'undefined', `vuex requires a Promise polyfill in this browser.`)
       assert(this instanceof Store, `store must be called with the new operator.`)
@@ -26,19 +28,33 @@ export class Store {
     } = options
 
     // store internal state
+    // store 实例对象 内部的 state
     this._committing = false
+    // 用来存放处理后的用户自定义的actoins
     this._actions = Object.create(null)
+    // 用来存放 actions 订阅
     this._actionSubscribers = []
+    // 用来存放处理后的用户自定义的mutations
     this._mutations = Object.create(null)
+    // 用来存放处理后的用户自定义的 getters
     this._wrappedGetters = Object.create(null)
+    // 模块收集器，构造模块树形结构
     this._modules = new ModuleCollection(options)
+    // 用于存储模块命名空间的关系
     this._modulesNamespaceMap = Object.create(null)
+    // 订阅
     this._subscribers = []
+    // 用于使用 $watch 观测 getters
     this._watcherVM = new Vue()
+    // 用来存放生成的本地 getters 的缓存
     this._makeLocalGettersCache = Object.create(null)
 
+    // 为何要这样绑定 ?
+    // 说明调用 commit 和 dispach 的 this 不一定是 store 实例
+    // 这是确保这两个函数里的 this 是 store 实例
     // bind commit and dispatch to self
     const store = this
+    // 这里能拿到 dispatch 和 commit，主要是因为 new 操作符执行过程中，在构造函数被执行前，dispatch 和 commit 方法已经被挂载到 Store.prototype 上了
     const { dispatch, commit } = this
     this.dispatch = function boundDispatch (type, payload) {
       return dispatch.call(store, type, payload)
@@ -50,13 +66,19 @@ export class Store {
     // strict mode
     this.strict = strict
 
+    // 根模块的state
     const state = this._modules.root.state
 
+    // 初始化 根模块。
+    // 并且也递归的注册所有子模块。
+    // 并且收集所有模块的 getters 放在 this._wrappedGetters 里面。
     // init root module.
     // this also recursively registers all sub-modules
     // and collects all module getters inside this._wrappedGetters
     installModule(this, state, [], this._modules.root)
 
+    // 初始化 store._vm 响应式的
+    // 并且注册 _wrappedGetters 作为 computed 的属性
     // initialize the store vm, which is responsible for the reactivity
     // (also registers _wrappedGetters as computed properties)
     resetStoreVM(this, state)

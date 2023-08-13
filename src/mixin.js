@@ -2,6 +2,8 @@ export default function (Vue) {
   const version = Number(Vue.version.split('.')[0])
 
   if (version >= 2) {
+    // 合并选项后 beforeCreate 是数组里函数的形式  [ƒ,  ƒ]
+    // 最后调用循环遍历这个数组，调用这些函数，这是一种函数与函数合并的解决方案。
     Vue.mixin({ beforeCreate: vuexInit })
   } else {
     // override init and inject vuex init procedure
@@ -17,11 +19,13 @@ export default function (Vue) {
 
   /**
    * Vuex init hook, injected into each instances init hooks list.
+   * vuexInit 后续被执行时，将使得最终每个Vue的实例对象，都有一个$store属性。且是同一个Store实例
    */
 
   function vuexInit () {
     const options = this.$options
     // store injection
+    // store 注入到每一个Vue的实例中
     if (options.store) {
       this.$store = typeof options.store === 'function'
         ? options.store()
