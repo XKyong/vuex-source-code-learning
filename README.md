@@ -3,9 +3,11 @@
 [![npm](https://img.shields.io/npm/v/vuex.svg)](https://npmjs.com/package/vuex)
 [![ci status](https://circleci.com/gh/vuejs/vuex/tree/3.x.png?style=shield)](https://circleci.com/gh/vuejs/vuex)
 
+该版本是Vuex 3.x版本，适配Vue2项目开发。
+
 ---
 
-:fire: **HEADS UP!** You're currently looking at Vuex 3 branch. If you're looking for Vuex 4, [please check out `main` branch](https://github.com/vuejs/vuex/tree/main).
+🔥 **HEADS UP!** You're currently looking at Vuex 3 branch. If you're looking for Vuex 4, [please check out `main` branch](https://github.com/vuejs/vuex/tree/main).
 
 ---
 
