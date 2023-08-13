@@ -24,7 +24,7 @@ $ yarn install
 $ yarn dev
 ```
 
-最后，浏览器打开 http://localhost:8080/，然后以 `shopping-cart `为例子，打开控制面板 `source`， 在左侧找到 `webapck://` 下的文件夹（主要是 `src` 和 `examples`），设置断点，过完基本vuex核心的源码操作过程。
+最后，浏览器打开 http://localhost:8080/ ，然后以 `shopping-cart` 为例子，打开浏览器面板 `source`， 在左侧找到 `webapck://` 下的文件夹（主要是 `src` 和 `examples`），设置断点，过完基本vuex核心的源码操作过程。
 
 调试过程中，做好代码注释工作。
 
