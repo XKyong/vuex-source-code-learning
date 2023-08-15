@@ -6,7 +6,7 @@ import { forEachValue, isObject, isPromise, assert, partial } from './util'
 let Vue // bind on install
 
 export class Store {
-  constructor (options = {}) {
+  constructor(options = {}) {
     // 如果是 cdn script 方式引入vuex插件，则自动安装vuex插件，不需要用Vue.use(Vuex)来安装
     // Auto install if it is not done yet and `window` has `Vue`.
     // To allow users to avoid auto-installation in some cases,
@@ -30,7 +30,7 @@ export class Store {
     // store internal state
     // store 实例对象 内部的 state
     this._committing = false
-    // 用来存放处理后的用户自定义的actoins
+    // 用来存放处理后的用户自定义的 actions
     this._actions = Object.create(null)
     // 用来存放 actions 订阅
     this._actionSubscribers = []
@@ -76,6 +76,15 @@ export class Store {
     // this also recursively registers all sub-modules
     // and collects all module getters inside this._wrappedGetters
     installModule(this, state, [], this._modules.root)
+
+    // 经过 installModule 方法之后：
+    // （1）业务代码传入的 actions 会被处理完放到 _actions 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedActionHandler 函数；
+    // （2）业务代码传入的 getters 会被处理完放到 _wrappedGetters 对象中，每个 key 对应的 value 是下边的 wrappedGetter 函数；
+    // （3）业务代码传入的 mutations 会被处理完放到 _mutations 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedMutationHandler 函数；
+    // （4）_modulesNamespaceMap 对象会存入命名空间字符串（key）和对应模块（Module实例）
+    // （5）_modules.root.state 会存入业务代码中传入的 modules 对象中的 state，比如：
+    //     _modules.root.state = { cart: { checkoutStatus: null, items: [] }, products: { all: [] } }
+    // （6）各个 module 都会加上 context 属性
 
     // 初始化 store._vm 响应式的
     // 并且注册 _wrappedGetters 作为 computed 的属性
@@ -356,13 +365,14 @@ function installModule (store, rootState, path, module, hot) {
 
   // register in namespace map
   if (module.namespaced) {
+    // 模块命名空间map对象中已经有了，开发环境报错提示重复
     if (store._modulesNamespaceMap[namespace] && __DEV__) {
       console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
     }
     store._modulesNamespaceMap[namespace] = module
   }
 
-  // set state
+  // set state 注册state
   if (!isRoot && !hot) {
     const parentState = getNestedState(rootState, path.slice(0, -1))
     const moduleName = path[path.length - 1]
@@ -374,28 +384,40 @@ function installModule (store, rootState, path, module, hot) {
           )
         }
       }
+
+      // 给父级添加上 moduleName，并且值是响应式的，比如经过处理后， _modules.root.state 的内容为：
+      // _modules.root.state = { cart: { checkoutStatus: null, items: [] }, products: { all: [] } }
+      // 其中 cart 和 products 属性对应的对象均是响应式的！
       Vue.set(parentState, moduleName, module.state)
     })
   }
 
+  // 模块的 context 属性在这里才被注册
+  // module.context 这个赋值主要是给 helpers 中 mapState、mapGetters、mapMutations、mapActions四个辅助函数使用的。
+  // 生成本地的dispatch、commit、getters和state。
+  // 主要作用就是抹平差异化，不需要用户再传模块参数。
   const local = module.context = makeLocalContext(store, namespace, path)
 
+  // 遍历注册 mutation
   module.forEachMutation((mutation, key) => {
     const namespacedType = namespace + key
     registerMutation(store, namespacedType, mutation, local)
   })
 
+  // 遍历注册 action
   module.forEachAction((action, key) => {
     const type = action.root ? key : namespace + key
     const handler = action.handler || action
     registerAction(store, type, handler, local)
   })
 
+  // 遍历注册 getter
   module.forEachGetter((getter, key) => {
     const namespacedType = namespace + key
     registerGetter(store, namespacedType, getter, local)
   })
 
+  // 遍历注册 子模块
   module.forEachChild((child, key) => {
     installModule(store, rootState, path.concat(key), child, hot)
   })
@@ -483,16 +505,49 @@ function makeLocalGetters (store, namespace) {
   return store._makeLocalGettersCache[namespace]
 }
 
+/**
+ * 注册 mutation
+ * @param {Object} store 对象
+ * @param {String} type 类型
+ * @param {Function} handler 用户自定义的函数
+ * @param {Object} local local 对象
+ */
 function registerMutation (store, type, handler, local) {
+  // 收集的所有的mutations找对应的mutation函数，没有就赋值空数组
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
+    /**
+     * mutations: {
+     *    pushProductToCart (state, { id }) {
+     *        console.log(state);
+     *    }
+     * }
+     * 也就是为什么用户定义的 mutation 第一个参数是state的原因，第二个参数是payload参数
+     */
     handler.call(store, local.state, payload)
   })
 }
 
+/**
+* 注册 action
+* @param {Object} store 对象
+* @param {String} type 类型
+* @param {Function} handler 用户自定义的函数
+* @param {Object} local local 对象
+*/
 function registerAction (store, type, handler, local) {
   const entry = store._actions[type] || (store._actions[type] = [])
+  // payload 是actions函数的第二个参数
   entry.push(function wrappedActionHandler (payload) {
+    /**
+    * 也就是为什么用户定义的actions中的函数第一个参数有
+    *  { dispatch, commit, getters, state, rootGetters, rootState } 的原因
+    * actions: {
+    *    checkout ({ commit, state }, products) {
+    *        console.log(commit, state);
+    *    }
+    * }
+    */
     let res = handler.call(store, {
       dispatch: local.dispatch,
       commit: local.commit,
@@ -501,9 +556,20 @@ function registerAction (store, type, handler, local) {
       rootGetters: store.getters,
       rootState: store.state
     }, payload)
+
+    /**
+    * export function isPromise (val) {
+       return val && typeof val.then === 'function'
+     }
+    * 判断如果不是Promise 则 Promise 化，这也就是为啥 actions 中能够处理异步函数的原因
+       也就是为什么构造函数中断言不支持promise报错的原因
+       vuex需要Promise polyfill
+       assert(typeof Promise !== 'undefined', `vuex requires a Promise polyfill in this browser.`)
+    */
     if (!isPromise(res)) {
       res = Promise.resolve(res)
     }
+    // devtool 工具触发 vuex:error
     if (store._devtoolHook) {
       return res.catch(err => {
         store._devtoolHook.emit('vuex:error', err)
@@ -515,7 +581,16 @@ function registerAction (store, type, handler, local) {
   })
 }
 
+/**
+ * 注册 getter
+ * @param {Object} store  Store实例
+ * @param {String} type 类型
+ * @param {Object} rawGetter  原始未加工的 getter 也就是用户定义的 getter 函数
+ * @examples  比如 cartProducts: (state, getters, rootState, rootGetters) => {}
+ * @param {Object} local 本地 local 对象
+ */
 function registerGetter (store, type, rawGetter, local) {
+  // 类型如果已经存在，报错：已经存在
   if (store._wrappedGetters[type]) {
     if (__DEV__) {
       console.error(`[vuex] duplicate getter key: ${type}`)
@@ -523,6 +598,14 @@ function registerGetter (store, type, rawGetter, local) {
     return
   }
   store._wrappedGetters[type] = function wrappedGetter (store) {
+    /**
+     * 这也就是为啥 getters 中能获取到  (state, getters, rootState, rootGetters)  这些值的原因
+     * getters = {
+     *      cartProducts: (state, getters, rootState, rootGetters) => {
+     *        console.log(state, getters, rootState, rootGetters);
+     *      }
+     * }
+     */
     return rawGetter(
       local.state, // local state
       local.getters, // local getters
@@ -540,6 +623,7 @@ function enableStrictMode (store) {
   }, { deep: true, sync: true })
 }
 
+// 把 path 数组最右边的 key 对应的 state 对象拿出来
 function getNestedState (state, path) {
   return path.reduce((state, key) => state[key], state)
 }

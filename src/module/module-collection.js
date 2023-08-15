@@ -17,6 +17,8 @@ export default class ModuleCollection {
     let module = this.root
     return path.reduce((namespace, key) => {
       module = module.getChild(key)
+      // 如果业务代码传入的 module 对象中设置 namespaced 为 true，
+      // 则后续业务代码使用时必须使用如 `this.$store.commit('products/setProducts')`
       return namespace + (module.namespaced ? key + '/' : '')
     }, '')
   }
@@ -26,6 +28,7 @@ export default class ModuleCollection {
   }
 
   register (path, rawModule, runtime = true) {
+    // 非生产环境 断言判断用户自定义的模块是否符合要求
     if (__DEV__) {
       assertRawModule(path, rawModule)
     }
