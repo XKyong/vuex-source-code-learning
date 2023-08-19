@@ -50,7 +50,7 @@ export class Store {
     this._makeLocalGettersCache = Object.create(null)
 
     // 为何要这样绑定 ?
-    // 说明调用 commit 和 dispach 的 this 不一定是 store 实例
+    // 说明调用 commit 和 dispatch 的 this 不一定是 store 实例
     // 这是确保这两个函数里的 this 是 store 实例
     // bind commit and dispatch to self
     const store = this
@@ -92,11 +92,17 @@ export class Store {
     // (also registers _wrappedGetters as computed properties)
     resetStoreVM(this, state)
 
+    // 经过 resetStoreVM 方法之后：
+    // （1）store实例多了个 getters 属性，key 为 _wrappedGetters 对象的key，value 为 get() => store._vm[key]
+    // （2）store实例多了个 _vm 属性，值为 Vue 实例，store._vm._data.$$state 即为传入的 state 对象，且经过响应式处理
+    // （3）将 _wrappedGetters 对象中的内容进行处理后放到 computed 对象中，然后将该 computed 对象作为 store._vm.computed
+
     // apply plugins
     plugins.forEach(plugin => plugin(this))
 
     const useDevtools = options.devtools !== undefined ? options.devtools : Vue.config.devtools
     if (useDevtools) {
+      // 经过如下函数处理，如果启动了 vue devtools，则 store实例会多个 _devtoolHook 属性
       devtoolPlugin(this)
     }
   }
@@ -310,19 +316,33 @@ function resetStore (store, hot) {
 }
 
 function resetStoreVM (store, state, hot) {
+  // 存储一份老的Vue实例对象 _vm
   const oldVm = store._vm
 
   // bind store public getters
   store.getters = {}
   // reset local getters cache
   store._makeLocalGettersCache = Object.create(null)
+  // 注册时收集的处理后的用户自定义的 wrappedGetters
   const wrappedGetters = store._wrappedGetters
+  // 声明 计算属性 computed 对象
   const computed = {}
+  // 遍历 wrappedGetters 赋值到 computed 上
   forEachValue(wrappedGetters, (fn, key) => {
     // use computed to leverage its lazy-caching mechanism
     // direct inline function use will lead to closure preserving oldVm.
     // using partial to return function with only arguments preserved in closure environment.
+    /**
+     * partial 函数
+     * 执行函数 返回一个新函数
+        export function partial (fn, arg) {
+          return function () {
+            return fn(arg)
+          }
+        }
+     */
     computed[key] = partial(fn, store)
+    // getter 赋值 keys
     Object.defineProperty(store.getters, key, {
       get: () => store._vm[key],
       enumerable: true // for local getters
@@ -333,6 +353,7 @@ function resetStoreVM (store, state, hot) {
   // suppress warnings just in case the user has added
   // some funky global mixins
   const silent = Vue.config.silent
+  // 声明变量 silent 存储用户设置的静默模式配置
   Vue.config.silent = true
   store._vm = new Vue({
     data: {
@@ -340,13 +361,20 @@ function resetStoreVM (store, state, hot) {
     },
     computed
   })
+
+  // 如此使用后，对 store._vm.$$state 的修改，会反应到 store._vm.$data.$$state 上，然后会再反应到 store._vm._data.$$state 上！
+
+  // 把存储的静默模式配置赋值回来
   Vue.config.silent = silent
 
   // enable strict mode for new vm
+  // 开启严格模式 执行这句
+  // 用 $watch 观测 state，只能使用 mutation 修改 也就是store实例的 _withCommit 方法
   if (store.strict) {
     enableStrictMode(store)
   }
 
+  // 如果存在老的 _vm 实例
   if (oldVm) {
     if (hot) {
       // dispatch changes in all subscribed watchers
@@ -355,6 +383,7 @@ function resetStoreVM (store, state, hot) {
         oldVm._data.$$state = null
       })
     }
+    // 实例销毁
     Vue.nextTick(() => oldVm.$destroy())
   }
 }

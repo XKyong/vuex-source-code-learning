@@ -24,8 +24,9 @@ export default {
   methods: mapActions('cart', [
     'addProductToCart'
   ]),
-  created () {
-    this.$store.dispatch('products/getAllProducts')
+  async created () {
+    const res = this.$store.dispatch('products/getAllProducts')
+    res.then(result => console.log('ProductList---', result))
   }
 }
 </script>

@@ -11,7 +11,7 @@
 
 ```js
 module.exports = {
-	// 省略其他配置项
+  // 省略其他配置项
   // 开启sourcemap才好调试
   devtool: 'sourcemap',
 }

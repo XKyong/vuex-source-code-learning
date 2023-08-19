@@ -14,6 +14,9 @@ const actions = {
     shop.getProducts(products => {
       commit('setProducts', products)
     })
+
+    // 验证 action 函数在 dispatch 执行后的返回值是 Promise 对象！
+    return 'getAllProducts-action'
   }
 }
 
