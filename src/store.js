@@ -42,7 +42,7 @@ export class Store {
     this._modules = new ModuleCollection(options)
     // 用于存储模块命名空间的关系
     this._modulesNamespaceMap = Object.create(null)
-    // 订阅
+    // 用来存放 commit 订阅
     this._subscribers = []
     // 用于使用 $watch 观测 getters
     this._watcherVM = new Vue()
@@ -102,7 +102,9 @@ export class Store {
 
     const useDevtools = options.devtools !== undefined ? options.devtools : Vue.config.devtools
     if (useDevtools) {
-      // 经过如下函数处理，如果启动了 vue devtools，则 store实例会多个 _devtoolHook 属性
+      // 经过如下函数处理，如果启动了 vue devtools：
+      // 1.则 store实例会多个 _devtoolHook 属性
+      // 2._subscribers 和 _actionSubscribers 数组中都有了一个订阅者（回调函数）
       devtoolPlugin(this)
     }
   }
@@ -119,6 +121,18 @@ export class Store {
 
   commit (_type, _payload, _options) {
     // check object-style commit
+    // 统一成对象风格
+    // commit 支持多种方式
+    // (1) type 为字符串
+    // store.commit('increment', {
+    //   count: 10
+    // })
+    // (2) type为对象，且包含 type 属性
+    // store.commit({
+    //   type: 'increment',
+    //   count: 10
+    // })
+
     const {
       type,
       payload,
@@ -126,6 +140,7 @@ export class Store {
     } = unifyObjectStyle(_type, _payload, _options)
 
     const mutation = { type, payload }
+    // 取出处理后的用户定义 mutation
     const entry = this._mutations[type]
     if (!entry) {
       if (__DEV__) {
@@ -134,11 +149,13 @@ export class Store {
       return
     }
     this._withCommit(() => {
+      // 遍历执行
       entry.forEach(function commitIterator (handler) {
         handler(payload)
       })
     })
 
+    // 订阅 mutation 执行
     this._subscribers
       .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
       .forEach(sub => sub(mutation, this.state))
@@ -215,15 +232,18 @@ export class Store {
     })
   }
 
+  // 订阅 store 的 mutation
   subscribe (fn, options) {
     return genericSubscribe(fn, this._subscribers, options)
   }
 
+  // 订阅 store 的 action
   subscribeAction (fn, options) {
     const subs = typeof fn === 'function' ? { before: fn } : fn
     return genericSubscribe(subs, this._actionSubscribers, options)
   }
 
+  // 响应式地侦听 fn 的返回值，当值改变时调用回调函数。
   watch (getter, cb, options) {
     if (__DEV__) {
       assert(typeof getter === 'function', `store.watch only accepts a function.`)
@@ -231,12 +251,19 @@ export class Store {
     return this._watcherVM.$watch(() => getter(this.state, this.getters), cb, options)
   }
 
+  // 替换 store 的根状态，仅用状态合并或时光旅行调试。
   replaceState (state) {
     this._withCommit(() => {
       this._vm._data.$$state = state
     })
   }
 
+  /**
+   * 动态注册模块
+   * @param {Array|String} path 路径
+   * @param {Object} rawModule 原始未加工的模块
+   * @param {Object} options 参数选项
+   */
   registerModule (path, rawModule, options = {}) {
     if (typeof path === 'string') path = [path]
 
@@ -245,12 +272,18 @@ export class Store {
       assert(path.length > 0, 'cannot register the root module by using registerModule.')
     }
 
+    // 手动调用 模块注册的方法
     this._modules.register(path, rawModule)
+    // 安装模块
     installModule(this, this.state, path, this._modules.get(path), options.preserveState)
     // reset store to update getters...
     resetStoreVM(this, this.state)
   }
 
+  /**
+   * 注销模块
+   * @param {Array|String} path 路径
+   */
   unregisterModule (path) {
     if (typeof path === 'string') path = [path]
 
@@ -266,6 +299,7 @@ export class Store {
     resetStore(this)
   }
 
+  // 检查该模块的名字是否已经被注册
   hasModule (path) {
     if (typeof path === 'string') path = [path]
 
@@ -276,7 +310,9 @@ export class Store {
     return this._modules.isRegistered(path)
   }
 
+  // 热替换新的 action 和 mutation
   hotUpdate (newOptions) {
+    // 调用的是 ModuleCollection 的 update 方法，最终调用对应的是每个 Module 的 update
     this._modules.update(newOptions)
     resetStore(this, true)
   }
@@ -290,11 +326,14 @@ export class Store {
 }
 
 function genericSubscribe (fn, subs, options) {
+  // 往订阅数组中添加 fn，如果指定 prepend，则加到数组最前面
   if (subs.indexOf(fn) < 0) {
     options && options.prepend
       ? subs.unshift(fn)
       : subs.push(fn)
   }
+
+  // 如果要停止订阅，则执行如下的回调，这样，对应的 fn 就会从 subs 数组中移除
   return () => {
     const i = subs.indexOf(fn)
     if (i > -1) {
@@ -552,6 +591,8 @@ function registerMutation (store, type, handler, local) {
      *    }
      * }
      * 也就是为什么用户定义的 mutation 第一个参数是state的原因，第二个参数是payload参数
+     *
+     * 这里 local.state 最终是作用到 store._vm._data.$$state 上的数据！
      */
     handler.call(store, local.state, payload)
   })

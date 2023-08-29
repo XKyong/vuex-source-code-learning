@@ -17,10 +17,12 @@ export default function devtoolPlugin (store) {
   })
 
   store.subscribe((mutation, state) => {
+    console.log(`[subscribe]devtoolHook emit 'vuex:mutation'`)
     devtoolHook.emit('vuex:mutation', mutation, state)
   }, { prepend: true })
 
   store.subscribeAction((action, state) => {
+    console.log(`[subscribeAction]devtoolHook emit 'vuex:action'`)
     devtoolHook.emit('vuex:action', action, state)
   }, { prepend: true })
 }

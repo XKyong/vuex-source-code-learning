@@ -21,10 +21,12 @@ export default {
   computed: mapState({
     products: state => state.products.all
   }),
+  // 经过辅助函数 mapActions 调试！
   methods: mapActions('cart', [
     'addProductToCart'
   ]),
   async created () {
+    // 不经过辅助函数 mapActions 调试！
     const res = this.$store.dispatch('products/getAllProducts')
     res.then(result => console.log('ProductList---', result))
   }
