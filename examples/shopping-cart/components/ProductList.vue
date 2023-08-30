@@ -38,6 +38,28 @@ export default {
     ...mapActions('cart', [
       'addProductToCart'
     ])
+    // 以上 mapActions 方法等价于：
+    // addProductToCart (product) {
+    //   return this.$store._modulesNamespaceMap['cart/'].context.dispatch.apply(this.$store, ['addProductToCart'].concat(product))
+    // }
+    // 举多几个例子：
+    // ...mapMutations(['inc']),
+    // ...mapMutations('kai', ['dec']),
+    // ...mapActions(['actionA'])
+    // ...mapActions('kai', ['actionB'])
+    // 上述这 4 个分别等价于：
+    // inc(...args){
+    //   return this.$store.dispatch.apply(this.$store, ['inc'].concat(args))
+    // },
+    // dec(...args){
+    //   return this.$store._modulesNamespaceMap['kai/'].context.dispatch.apply(this.$store, ['dec'].concat(args))
+    // },
+    // actionA(...args){
+    //   return this.$store.commit.apply(this.$store, ['actionA'].concat(args))
+    // }
+    // actionB(...args){
+    //   return this.$store._modulesNamespaceMap['kai/'].context.commit.apply(this.$store, ['actionB'].concat(args))
+    // }
   },
   async created () {
     // 不经过辅助函数 mapActions 调试！
