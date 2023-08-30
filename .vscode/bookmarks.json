@@ -4,33 +4,43 @@
 			"path": "src/store.js",
 			"bookmarks": [
 				{
-					"line": 442,
+					"line": 450,
 					"column": 22,
 					"label": ""
 				},
 				{
-					"line": 462,
+					"line": 470,
 					"column": 26,
 					"label": ""
 				},
 				{
-					"line": 468,
+					"line": 476,
 					"column": 18,
 					"label": ""
 				},
 				{
-					"line": 474,
+					"line": 482,
 					"column": 16,
 					"label": ""
 				},
 				{
-					"line": 481,
+					"line": 489,
 					"column": 16,
 					"label": ""
 				},
 				{
-					"line": 487,
+					"line": 495,
 					"column": 13,
+					"label": ""
+				}
+			]
+		},
+		{
+			"path": "examples/shopping-cart/components/ProductList.vue",
+			"bookmarks": [
+				{
+					"line": 25,
+					"column": 1,
 					"label": ""
 				}
 			]

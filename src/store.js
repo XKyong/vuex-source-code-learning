@@ -156,6 +156,7 @@ export class Store {
     })
 
     // 订阅 mutation 执行
+    // _subscribers 中的 sub 会在上述的所有 mutation 完成后调用，接收 mutation 和经过 mutation 后的状态 state 作为参数
     this._subscribers
       .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
       .forEach(sub => sub(mutation, this.state))
@@ -187,6 +188,7 @@ export class Store {
       return
     }
 
+    // 从 3.1.0 起，subscribeAction 也可以指定订阅处理函数的被调用时机应该在一个 action 分发之前还是之后 (默认行为是之前)：
     try {
       this._actionSubscribers
         .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
@@ -218,6 +220,7 @@ export class Store {
         resolve(res)
       }, error => {
         try {
+          // 自 3.4.0 起，subscribeAction 也可以指定一个 error 处理函数以捕获分发 action 的时候被抛出的错误。该函数第三个参数会接收到一个 error 对象。
           this._actionSubscribers
             .filter(sub => sub.error)
             .forEach(sub => sub.error(action, this.state, error))
@@ -232,12 +235,12 @@ export class Store {
     })
   }
 
-  // 订阅 store 的 mutation
+  // 订阅 store 的 mutation，常用于 vuex 插件
   subscribe (fn, options) {
     return genericSubscribe(fn, this._subscribers, options)
   }
 
-  // 订阅 store 的 action
+  // 订阅 store 的 action，常用于 vuex 插件
   subscribeAction (fn, options) {
     const subs = typeof fn === 'function' ? { before: fn } : fn
     return genericSubscribe(subs, this._actionSubscribers, options)
@@ -252,6 +255,7 @@ export class Store {
   }
 
   // 替换 store 的根状态，仅用状态合并或时光旅行调试。
+  // 做数据持久化处理（存入localStorage 或者 sessionStorage）的时候会用到，详见：https://github.com/boenfu/vuex-along
   replaceState (state) {
     this._withCommit(() => {
       this._vm._data.$$state = state
@@ -259,7 +263,7 @@ export class Store {
   }
 
   /**
-   * 动态注册模块
+   * 动态注册模块，用于服务端渲染
    * @param {Array|String} path 路径
    * @param {Object} rawModule 原始未加工的模块
    * @param {Object} options 参数选项
@@ -281,7 +285,7 @@ export class Store {
   }
 
   /**
-   * 注销模块
+   * 注销模块，用于服务端渲染
    * @param {Array|String} path 路径
    */
   unregisterModule (path) {
@@ -299,7 +303,7 @@ export class Store {
     resetStore(this)
   }
 
-  // 检查该模块的名字是否已经被注册
+  // 检查该模块的名字是否已经被注册，用于服务端渲染
   hasModule (path) {
     if (typeof path === 'string') path = [path]
 
@@ -317,6 +321,7 @@ export class Store {
     resetStore(this, true)
   }
 
+  // 包裹 commit 提交，handler 回调函数的执行
   _withCommit (fn) {
     const committing = this._committing
     this._committing = true
@@ -325,6 +330,7 @@ export class Store {
   }
 }
 
+// 往订阅数组 subs 中添加订阅回调函数 fn
 function genericSubscribe (fn, subs, options) {
   // 往订阅数组中添加 fn，如果指定 prepend，则加到数组最前面
   if (subs.indexOf(fn) < 0) {
@@ -342,6 +348,7 @@ function genericSubscribe (fn, subs, options) {
   }
 }
 
+// 重置 Store 实例属性
 function resetStore (store, hot) {
   store._actions = Object.create(null)
   store._mutations = Object.create(null)
@@ -354,6 +361,7 @@ function resetStore (store, hot) {
   resetStoreVM(store, state, hot)
 }
 
+// 重置 Store 实例 _vm 实例属性
 function resetStoreVM (store, state, hot) {
   // 存储一份老的Vue实例对象 _vm
   const oldVm = store._vm
@@ -685,6 +693,7 @@ function registerGetter (store, type, rawGetter, local) {
   }
 }
 
+// 启用严格模式，如果业务代码中，在 `new Vuex.Store` 时候设置了 `strict: true`，如果直接通过赋值的形式修改 state 中的状态，则开发环境会报错！
 function enableStrictMode (store) {
   store._vm.$watch(function () { return this._data.$$state }, () => {
     if (__DEV__) {
@@ -698,6 +707,9 @@ function getNestedState (state, path) {
   return path.reduce((state, key) => state[key], state)
 }
 
+// dispatch actions 或者 commit mutations 时，
+// 兼容 (type: string, payload?: any, options?: Object) => any 和 ({ type: string, ... }, payload?: any) => any 这2种函数签名形式！
+// 最终返回 { type, payload, options }
 function unifyObjectStyle (type, payload, options) {
   if (isObject(type) && type.type) {
     options = payload
