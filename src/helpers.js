@@ -15,6 +15,7 @@ export const mapState = normalizeNamespace((namespace, states) => {
   }
   normalizeMap(states).forEach(({ key, val }) => {
     res[key] = function mappedState () {
+      // 这里的 this 指向使用该 mapState 所处的那个 Vue 实例！
       let state = this.$store.state
       let getters = this.$store.getters
       if (namespace) {
@@ -26,6 +27,7 @@ export const mapState = normalizeNamespace((namespace, states) => {
         state = module.context.state
         getters = module.context.getters
       }
+      // 代码示例见：https://vuex.vuejs.org/zh/guide/state.html#mapstate-%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0
       return typeof val === 'function'
         ? val.call(this, state, getters)
         : state[val]

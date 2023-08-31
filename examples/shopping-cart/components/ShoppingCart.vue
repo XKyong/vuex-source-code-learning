@@ -21,12 +21,17 @@ import { mapGetters, mapState } from 'vuex'
 export default {
   computed: {
     // 没有命名空间的情况下，mapState 最终会转换成这样：
-    // checkoutStatus: this.$store.state.checkoutStatus
+    // checkoutStatus () {
+    //   return this.$store.state.cart.checkoutStatus
+    // },
     ...mapState({
       checkoutStatus: state => state.cart.checkoutStatus
     }),
+
     // 假设有命名空间 'kai'，即 mapState 最终会变成：
-    // checkoutStatus: this.$store._modulesNamespaceMap['kai/'].context.checkoutStatus
+    // checkoutStatus () {
+    //   return this.$store._modulesNamespaceMap['kai/'].context.state.cart.checkoutStatus
+    // },
     // ...mapState('kai', {
     //   checkoutStatus: state => state.cart.checkoutStatus
     // }),
