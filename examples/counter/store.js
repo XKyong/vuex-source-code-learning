@@ -34,6 +34,8 @@ const actions = {
     }
   },
   incrementAsync ({ commit }) {
+    // 跟 counter-hot 示例做对比：添加下边这行代码，保存文件，然后点击页面【Increment async】按钮，会发现console不会输出下边的log！
+    console.log('incrementAsync---')
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         commit('increment')
