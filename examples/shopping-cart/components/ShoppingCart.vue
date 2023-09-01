@@ -21,27 +21,38 @@ import { mapGetters, mapState } from 'vuex'
 export default {
   computed: {
     // 没有命名空间的情况下，mapState 最终会转换成这样：
-    // checkoutStatus () {
-    //   return this.$store.state.cart.checkoutStatus
+    // ...{
+    //   checkoutStatus: function mappedState () {
+    //     return this.$store.state.cart.checkoutStatus
+    //   }
     // },
-    ...mapState({
-      checkoutStatus: state => state.cart.checkoutStatus
-    }),
-
-    // 假设有命名空间 'kai'，即 mapState 最终会变成：
-    // checkoutStatus () {
-    //   return this.$store._modulesNamespaceMap['kai/'].context.state.cart.checkoutStatus
-    // },
-    // ...mapState('kai', {
+    // ...mapState({
     //   checkoutStatus: state => state.cart.checkoutStatus
     // }),
+
+    // 使用命名空间 'cart' 的情况下，即 mapState 最终会变成：
+    // ...{
+    //   checkoutStatus: function mappedState () {
+    //     return this.$store._modulesNamespaceMap['cart/'].context.state.checkoutStatus
+    //   }
+    // },
+    ...mapState('cart', {
+      checkoutStatus: state => state.checkoutStatus
+    }),
+    // --------------------------------------------
     ...mapGetters('cart', {
       products: 'cartProducts',
       total: 'cartTotalPrice'
     })
     // 上边 mapGetters 代码最终转换变为：
-    // products: this.$store.getters['cart/cartProducts'],
-    // total: this.$store.getters['cart/cartTotalPrice'],
+    // ...{
+    //   products: function mappedGetter () {
+    //     return this.$store.getters['cart/cartProducts']
+    //   },
+    //   total: function mappedGetter () {
+    //     return this.$store.getters['cart/cartTotalPrice']
+    //   }
+    // }
   },
   methods: {
     checkout (products) {
