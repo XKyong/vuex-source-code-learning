@@ -25,6 +25,7 @@ const actions = {
 // mutations
 const mutations = {
   setProducts (state, products) {
+    console.log('mutation setProducts this---', this) // Store实例
     state.all = products
   },
 

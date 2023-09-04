@@ -39,6 +39,7 @@ export class Store {
     // 用来存放处理后的用户自定义的 getters
     this._wrappedGetters = Object.create(null)
     // 模块收集器，构造模块树形结构
+    // 除了这里的 _modules（包含 root 属性即Module实例 的对象） 是 ModuleCollection 实例外，代码中涉及的 module 对象基本都是 Module 实例！
     this._modules = new ModuleCollection(options)
     // 用于存储模块命名空间的关系
     this._modulesNamespaceMap = Object.create(null)
@@ -63,6 +64,10 @@ export class Store {
       return commit.call(store, type, payload, options)
     }
 
+    // 经过 boundDispatch 和 boundCommit 处理后，
+    // 业务代码中调用的 this.$store.dispatch 即为这里的 boundDispatch
+    // 业务代码中调用的 this.$store.commit 即为这里的 boundCommit
+
     // strict mode
     this.strict = strict
 
@@ -78,13 +83,14 @@ export class Store {
     installModule(this, state, [], this._modules.root)
 
     // 经过 installModule 方法之后：
-    // （1）业务代码传入的 actions 会被处理完放到 _actions 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedActionHandler 函数；
-    // （2）业务代码传入的 getters 会被处理完放到 _wrappedGetters 对象中，每个 key 对应的 value 是下边的 wrappedGetter 函数；
-    // （3）业务代码传入的 mutations 会被处理完放到 _mutations 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedMutationHandler 函数；
-    // （4）_modulesNamespaceMap 对象会存入命名空间字符串（key）和对应模块（Module实例）
-    // （5）_modules.root.state 会存入业务代码中传入的 modules 对象中的 state，比如：
+    // （1）如果 module.namespaced 为 true 的话，_modulesNamespaceMap 对象会存入命名空间字符串（例如 `cart/` 和 `products/`）和对应模块（Module实例）
+    // （2）各个 module 都会加上 context 属性，通过 makeLocalContext 函数处理，context 对象包含本地化的 dispatch/commit/getters/state
+    //    即此时，Module 实例包含了如下几个属性：runtime、_children、_rawModule、state、namespaced和 context
+    // （3）_modules.root.state 会存入业务代码中传入的 modules 对象中的 state，比如：
     //     _modules.root.state = { cart: { checkoutStatus: null, items: [] }, products: { all: [] } }
-    // （6）各个 module 都会加上 context 属性
+    // （4）通过 registerMutation 函数，业务代码传入的 mutations 会被处理完放到 _mutations 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedMutationHandler 函数；
+    // （5）通过 registerAction 函数，业务代码传入的 actions 会被处理完放到 _actions 对象中，每个 key 对应的 value 都是数组，数组项是 wrappedActionHandler 函数；
+    // （6）通过 registerGetter 函数，业务代码传入的 getters 会被处理完放到 _wrappedGetters 对象中，每个 key 对应的 value 是下边的 wrappedGetter 函数；
 
     // 初始化 store._vm 响应式的
     // 并且注册 _wrappedGetters 作为 computed 的属性
@@ -93,7 +99,7 @@ export class Store {
     resetStoreVM(this, state)
 
     // 经过 resetStoreVM 方法之后：
-    // （1）store实例多了个 getters 属性，key 为 _wrappedGetters 对象的key，value 为 get() => store._vm[key]
+    // （1）store实例多了个 getters 属性，key 为 store._wrappedGetters 对象的key，value 为 () => store._vm[key]
     // （2）store实例多了个 _vm 属性，值为 Vue 实例，store._vm._data.$$state 即为传入的 state 对象，且经过响应式处理
     // （3）将 _wrappedGetters 对象中的内容进行处理后放到 computed 对象中，然后将该 computed 对象作为 store._vm.computed
 
@@ -110,6 +116,7 @@ export class Store {
   }
 
   get state () {
+    // 业务代码中使用的 this.$store.state[key] 就是从这里返回值的！
     return this._vm._data.$$state
   }
 
@@ -388,9 +395,12 @@ function resetStoreVM (store, state, hot) {
           }
         }
      */
+    // 这里的 fn 是 wrappedGetter(store)，即经过 registerGetter 函数处理的
     computed[key] = partial(fn, store)
     // getter 赋值 keys
+    // 业务代码中使用的 this.$store.getters[key] 就是从这里返回值的！
     Object.defineProperty(store.getters, key, {
+      // 这里等价于获取下边 store._vm.computed 对象中的 [key] 属性
       get: () => store._vm[key],
       enumerable: true // for local getters
     })
@@ -445,12 +455,16 @@ function installModule (store, rootState, path, module, hot) {
     if (store._modulesNamespaceMap[namespace] && __DEV__) {
       console.error(`[vuex] duplicate namespace ${namespace} for the namespaced module ${path.join('/')}`)
     }
+    // namespace = ''， 也是可以往 _modulesNamespaceMap 注册属性
     store._modulesNamespaceMap[namespace] = module
   }
 
-  // set state 注册state
+  // set state 响应式注册往父模块上 state 注册子模块
   if (!isRoot && !hot) {
+    // path.slice(0, -1) 处理可以理解为 拿当前模块的父模块
+    // 比如当 path 为 ['cart'] 时，则 path.slice(0, -1) 为 []，经过 getNestedState 处理后，拿到的是 cart 父模块 root 的 state，即 this._modules.root.state
     const parentState = getNestedState(rootState, path.slice(0, -1))
+    // 当前模块名，比如 'cart'
     const moduleName = path[path.length - 1]
     store._withCommit(() => {
       if (__DEV__) {
@@ -461,7 +475,8 @@ function installModule (store, rootState, path, module, hot) {
         }
       }
 
-      // 给父级添加上 moduleName，并且值是响应式的，比如经过处理后， _modules.root.state 的内容为：
+      // 给父模块添加上当前 moduleName，并且值是响应式的，如此处理后，就可以通过父模块的 moduleName 属性拿到对应子模块的 state 对象
+      // 比如当前例子中，经过处理后， parentState 即 _modules.root.state 的内容为：
       // _modules.root.state = { cart: { checkoutStatus: null, items: [] }, products: { all: [] } }
       // 其中 cart 和 products 属性对应的对象均是响应式的！
       Vue.set(parentState, moduleName, module.state)
@@ -472,15 +487,18 @@ function installModule (store, rootState, path, module, hot) {
   // module.context 这个赋值主要是给 helpers 中 mapState、mapGetters、mapMutations、mapActions四个辅助函数使用的。
   // 生成本地的dispatch、commit、getters和state。
   // 主要作用就是抹平差异化，不需要用户再传模块参数。
+  // namespace 才会是 'cart/'（当 module.namespaced 为 true 时），而 path 永远是 'cart'
   const local = module.context = makeLocalContext(store, namespace, path)
 
   // 遍历注册 mutation
+  // 这里的 mutation 参数是业务代码传入的函数
   module.forEachMutation((mutation, key) => {
     const namespacedType = namespace + key
     registerMutation(store, namespacedType, mutation, local)
   })
 
   // 遍历注册 action
+  // 这里的 action 参数是业务代码传入的函数或者包含 handler 函数的对象
   module.forEachAction((action, key) => {
     const type = action.root ? key : namespace + key
     const handler = action.handler || action
@@ -488,12 +506,13 @@ function installModule (store, rootState, path, module, hot) {
   })
 
   // 遍历注册 getter
+  // 这里的 getter 参数是业务代码传入的函数
   module.forEachGetter((getter, key) => {
     const namespacedType = namespace + key
     registerGetter(store, namespacedType, getter, local)
   })
 
-  // 遍历注册 子模块
+  // 递归遍历注册 子模块
   module.forEachChild((child, key) => {
     installModule(store, rootState, path.concat(key), child, hot)
   })
@@ -506,6 +525,11 @@ function installModule (store, rootState, path, module, hot) {
 function makeLocalContext (store, namespace, path) {
   const noNamespace = namespace === ''
 
+  // 注意下，这里的 store.dispatch 是 boundDispatch
+  // noNamespace 为 true 时，说明不需要携带命名空间前缀调用
+  // 否则可以携带命名空间调用，或者通过 options 对象传入的 root 属性设置为 true 以达到不区分命名空间的 action 函数调用
+  // 官网示例：https://vuex.vuejs.org/zh/guide/modules.html#%E5%9C%A8%E5%B8%A6%E5%91%BD%E5%90%8D%E7%A9%BA%E9%97%B4%E7%9A%84%E6%A8%A1%E5%9D%97%E5%86%85%E8%AE%BF%E9%97%AE%E5%85%A8%E5%B1%80%E5%86%85%E5%AE%B9%EF%BC%88global-assets%EF%BC%89
+  // 下边的 commit 处理类似
   const local = {
     dispatch: noNamespace ? store.dispatch : (_type, _payload, _options) => {
       const args = unifyObjectStyle(_type, _payload, _options)
@@ -523,6 +547,7 @@ function makeLocalContext (store, namespace, path) {
       return store.dispatch(type, payload)
     },
 
+    // 注意下，这里的 store.commit 是 boundCommit
     commit: noNamespace ? store.commit : (_type, _payload, _options) => {
       const args = unifyObjectStyle(_type, _payload, _options)
       const { payload, options } = args

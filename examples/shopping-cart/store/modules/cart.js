@@ -9,7 +9,10 @@ const state = () => ({
 
 // getters
 const getters = {
-  cartProducts: (state, getters, rootState) => {
+  cartProducts: function (state, getters, rootState) {
+    // 这里的 this 是什么？
+    // 因为 'use strict' 的存在
+    console.log('getters cartProducts this:', this) // undefined
     return state.items.map(({ id, quantity }) => {
       const product = rootState.products.all.find(product => product.id === id)
       return {
@@ -22,6 +25,8 @@ const getters = {
   },
 
   cartTotalPrice: (state, getters) => {
+    // 这里的 this 是什么？
+    console.log('getter cartTotalPrice this:', this) // undefined
     return getters.cartProducts.reduce((total, product) => {
       return total + product.price * product.quantity
     }, 0)
@@ -31,6 +36,7 @@ const getters = {
 // actions
 const actions = {
   checkout ({ commit, state }, products) {
+    console.log('action checkout---', this) // Store 实例
     const savedCartItems = [...state.items]
     commit('setCheckoutStatus', null)
     // empty cart

@@ -34,6 +34,7 @@ export default class ModuleCollection {
     }
 
     const newModule = new Module(rawModule, runtime)
+    // path.length 为 0 时，说明是根模块 Module 实例
     if (path.length === 0) {
       this.root = newModule
     } else {
@@ -43,6 +44,7 @@ export default class ModuleCollection {
 
     // register nested modules
     if (rawModule.modules) {
+      // 递归注册子模块
       forEachValue(rawModule.modules, (rawChildModule, key) => {
         this.register(path.concat(key), rawChildModule, runtime)
       })

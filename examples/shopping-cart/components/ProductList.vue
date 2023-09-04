@@ -67,14 +67,13 @@ export default {
     // }
   },
   async created () {
-    // 不经过辅助函数 mapActions 调试！
-    // 不经过辅助函数 mapActions，dispatch 时直接进入源码 Store 实例的 dispatch 方法！
+    // 不经过辅助函数 mapActions 调试，dispatch 触发时，也是先后经过：
+    // makeLocalContext 方法中的 local.dispatch -> Store 构造函数中的 boundDispatch -> Store 实例 dispatch 方法
     const res = this.$store.dispatch('products/getAllProducts')
     res.then(result => console.log('ProductList---', result))
   }
 }
 
-// 这里也提一下，对于 mutation，源码途径路径类似，这里总结下：
-// 1.如果使用 mapMutations 辅助函数，则 commit 时直接进入源码 Store 实例的 commit 方法！
-// 2.否则，dispatch 提交时，先后经过：makeLocalContext 方法中的 local.commit -> Store 构造函数中的 boundCommit -> Store 实例 commit 方法
+// 这里也提一下，对于 mutation，源码途径路径类似，不管经没经过 mapMutations 辅助函数，commit 提交时，也是先后经过：
+// makeLocalContext 方法中的 local.commit -> Store 构造函数中的 boundCommit -> Store 实例 commit 方法
 </script>

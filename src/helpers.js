@@ -16,6 +16,9 @@ export const mapState = normalizeNamespace((namespace, states) => {
   normalizeMap(states).forEach(({ key, val }) => {
     res[key] = function mappedState () {
       // 这里的 this 指向使用该 mapState 所处的那个 Vue 实例！
+      // 直接拿 store 实例的 state 和 getter
+      // state 拿的是 store._vm._data.$$state
+      // getter 拿的是 resetStoreVM 函数中处理的 store.getters
       let state = this.$store.state
       let getters = this.$store.getters
       if (namespace) {
@@ -24,6 +27,8 @@ export const mapState = normalizeNamespace((namespace, states) => {
         if (!module) {
           return
         }
+
+        // 如果 namespace 存在，则拿的是 makeLocalContext 函数返回的 local 对象中的 state 和 getters
         state = module.context.state
         getters = module.context.getters
       }
@@ -54,12 +59,14 @@ export const mapMutations = normalizeNamespace((namespace, mutations) => {
   normalizeMap(mutations).forEach(({ key, val }) => {
     res[key] = function mappedMutation (...args) {
       // Get the commit method from store
+      // 这里的 commit 直接拿的是 Store 构造函数中声明的 boundCommit
       let commit = this.$store.commit
       if (namespace) {
         const module = getModuleByNamespace(this.$store, 'mapMutations', namespace)
         if (!module) {
           return
         }
+        // 如果 namespace 存在，则拿的是 makeLocalContext 函数返回的 local 对象中的 commit，最终调用的也是 boundCommit
         commit = module.context.commit
       }
       return typeof val === 'function'
@@ -119,12 +126,14 @@ export const mapActions = normalizeNamespace((namespace, actions) => {
   normalizeMap(actions).forEach(({ key, val }) => {
     res[key] = function mappedAction (...args) {
       // get dispatch function from store
+      // 这里的 commit 直接拿的是 Store 构造函数中声明的 boundDispatch
       let dispatch = this.$store.dispatch
       if (namespace) {
         const module = getModuleByNamespace(this.$store, 'mapActions', namespace)
         if (!module) {
           return
         }
+        // 如果 namespace 存在，则拿的是 makeLocalContext 函数返回的 local 对象中的 commit，最终调用的也是 boundDispatch
         dispatch = module.context.dispatch
       }
       return typeof val === 'function'

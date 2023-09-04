@@ -13,6 +13,7 @@ export default class Module {
     const rawState = rawModule.state
 
     // Store the origin module's state
+    // 业务代码传入的 state 可以是函数或者对象
     this.state = (typeof rawState === 'function' ? rawState() : rawState) || {}
   }
 
