@@ -4,42 +4,42 @@
 			"path": "src/store.js",
 			"bookmarks": [
 				{
-					"line": 119,
+					"line": 120,
 					"column": 33,
 					"label": "业务代码中使用的 this.$store.state[key] 就是从这里返回值的！"
 				},
 				{
-					"line": 401,
+					"line": 402,
 					"column": 47,
 					"label": "业务代码中使用的 this.$store.getters[key] 就是从这里返回值的"
 				},
 				{
-					"line": 461,
+					"line": 464,
 					"column": 37,
 					"label": "响应式注册往父模块上 state 注册子模块"
 				},
 				{
-					"line": 490,
+					"line": 493,
 					"column": 73,
 					"label": "模块的 context 属性在这里才被注册"
 				},
 				{
-					"line": 494,
+					"line": 497,
 					"column": 45,
 					"label": "遍历注册 mutation"
 				},
 				{
-					"line": 501,
+					"line": 504,
 					"column": 41,
 					"label": "遍历注册 action"
 				},
 				{
-					"line": 509,
+					"line": 512,
 					"column": 41,
 					"label": "遍历注册 getter"
 				},
 				{
-					"line": 515,
+					"line": 518,
 					"column": 39,
 					"label": "递归遍历注册 子模块"
 				}

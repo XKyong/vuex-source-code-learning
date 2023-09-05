@@ -53,6 +53,7 @@ export class Store {
     // 为何要这样绑定 ?
     // 说明调用 commit 和 dispatch 的 this 不一定是 store 实例
     // 这是确保这两个函数里的 this 是 store 实例
+    /* 将dispatch与commit调用的this绑定为store对象本身，否则在组件内部this.dispatch时的this会指向组件的vm */
     // bind commit and dispatch to self
     const store = this
     // 这里能拿到 dispatch 和 commit，主要是因为 new 操作符执行过程中，在构造函数被执行前，dispatch 和 commit 方法已经被挂载到 Store.prototype 上了
@@ -409,9 +410,11 @@ function resetStoreVM (store, state, hot) {
   // use a Vue instance to store the state tree
   // suppress warnings just in case the user has added
   // some funky global mixins
+  /* Vue.config.silent暂时设置为true的目的是在new一个Vue实例的过程中不会报出一切警告 */
   const silent = Vue.config.silent
   // 声明变量 silent 存储用户设置的静默模式配置
   Vue.config.silent = true
+  /*  这里new了一个Vue对象，运用Vue内部的响应式实现注册state以及computed */
   store._vm = new Vue({
     data: {
       $$state: state
@@ -431,7 +434,7 @@ function resetStoreVM (store, state, hot) {
     enableStrictMode(store)
   }
 
-  // 如果存在老的 _vm 实例
+  /* 解除旧vm的state的引用，以及销毁旧的Vue对象 */
   if (oldVm) {
     if (hot) {
       // dispatch changes in all subscribed watchers
@@ -615,6 +618,7 @@ function makeLocalGetters (store, namespace) {
  */
 function registerMutation (store, type, handler, local) {
   // 收集的所有的mutations找对应的mutation函数，没有就赋值空数组
+  /* 所有的mutation会被push进一个数组中，这样相同的mutation就可以调用不同module中的同名的mutation了 */
   const entry = store._mutations[type] || (store._mutations[type] = [])
   entry.push(function wrappedMutationHandler (payload) {
     /**
@@ -722,6 +726,7 @@ function registerGetter (store, type, rawGetter, local) {
 function enableStrictMode (store) {
   store._vm.$watch(function () { return this._data.$$state }, () => {
     if (__DEV__) {
+      /* 检测store中的_committing的值，如果是true代表不是通过mutation的方法修改的 */
       assert(store._committing, `do not mutate vuex store state outside mutation handlers.`)
     }
   }, { deep: true, sync: true })
