@@ -726,7 +726,7 @@ function registerGetter (store, type, rawGetter, local) {
 function enableStrictMode (store) {
   store._vm.$watch(function () { return this._data.$$state }, () => {
     if (__DEV__) {
-      /* 检测store中的_committing的值，如果是true代表不是通过mutation的方法修改的 */
+      /* 检测store中的_committing的值，如果是false代表不是通过mutation的方法修改的，因为没经过 _withcommit 方法 */
       assert(store._committing, `do not mutate vuex store state outside mutation handlers.`)
     }
   }, { deep: true, sync: true })
